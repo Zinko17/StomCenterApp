@@ -6,4 +6,11 @@ class DaySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Day
-        fields = ['name']
+        fields = ['id', 'name']
+
+
+class DoctorDaySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = DoctorDay
+        fields = '__all__'
