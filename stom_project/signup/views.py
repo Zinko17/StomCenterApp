@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 from .serializers import *
-from .permissions import IsSuperUser, DoctorDayPermission, ClientPermission
+from .permissions import IsSuperUser, DoctorDayPermission, ClientPermission,DoctorPermission
 
 
 class DayViewSet(ViewSet):
@@ -20,6 +20,7 @@ class DayViewSet(ViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=201)
+        return Response(serializer.errors)
 
     def retrieve(self, request, day_id):
         day = Day.objects.get(id=day_id)
@@ -102,11 +103,18 @@ class OrderViewSet(ViewSet):
         serializer = OrderDisplaySerializer(orders, many=True)
         return Response(serializer.data)
 
-    # TODO cannot update on day when doctor doesnot work!
     def update(self, request, order_id):
         order = Order.objects.get(id=order_id)
         serializer = self.serializer_class(order, data=request.data)
         if serializer.is_valid():
+            day_id = request.data.get('day')
+            doctor_id = request.data.get('doctor')
+            try:
+                dd = DoctorDay.objects.get(day=day_id,doctor=doctor_id,status='free')
+                dd.status = 'reserved'
+                dd.save()
+            except DoctorDay.DoesNotExist:
+                return Response('Доктор в это день не работает,либо день забит.')
             serializer.save()
             return Response(serializer.data, status=202)
         return Response(serializer.errors, status=400)
@@ -121,3 +129,31 @@ class OrderViewSet(ViewSet):
         o_id = order.id
         order.delete()
         return Response(f'{o_id} successfully deleted!', status=204)
+
+
+class DoctorViewSet(ViewSet):
+    permission_classes = [DoctorPermission]
+    serializer_class = UserDetailSerializer
+    def list(self,request):
+        doctors = User.objects.filter(groups__name='doctor')
+        serializer = UserListSerializer(doctors, many=True)
+        return Response(serializer.data,status=200)
+
+    def retrieve(self,request,d_username):
+        doctor = User.objects.get(username=d_username)
+        serializer = self.serializer_class(doctor)
+        return Response(serializer.data,status=200)
+
+    def update(self,request,d_username):
+        doctor = User.objects.get(username=d_username)
+        serializer = self.serializer_class(doctor,data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data,status=202)
+        return Response(serializer.errors,status=400)
+
+    def destroy(self,request,d_username):
+        doctor = User.objects.get(username=d_username)
+        doctor.delete()
+        return Response('Successfully deleted',status=204)
+
