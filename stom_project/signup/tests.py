@@ -196,3 +196,27 @@ class OrderTestCase(APITestCase):
         data = {'day': self.day.id, 'doctor': self.user2.id}
         self.response = self.client.put(self.url, data)
         self.assertEqual(self.response.status_code, 403)
+
+
+class UserTestCase(APITestCase):
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(username='doctor', password='123456')
+        self.group = Group.objects.create(name='doctor')
+        self.user.groups.add(self.group)
+        self.day = Day.objects.create(name='monday')
+
+    def test_get_doctor_list(self):
+        self.url = reverse('doctors')
+        self.client.login(username='doctor', password='123456')
+        self.response = self.client.get(self.url)
+        self.assertEqual(self.response.status_code, 200)
+
+    def test_get_doctor_detail(self,):
+        self.url = reverse('doctor_detail',args=(self.user.username,))
+        self.client.login(username='doctor', password='123456')
+        self.response = self.client.get(self.url)
+        self.assertEqual(self.response.status_code, 200)
+
+
+
+
